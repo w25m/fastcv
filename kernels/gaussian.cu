@@ -45,13 +45,13 @@ __global__ void Horizontal(uchar3* in, uchar3* out, float* kernel, int width, in
     else
         tile[idx]= make_uchar3(0,0,0);
 
-    if(threadIdx.x<half){ //po lewej od środkowego piksela
+    if(threadIdx.x<half){ //on the left from middle pixel
         int px= x-half;
         if (px<0) px=0;
         tile[threadIdx.y*tile_w +threadIdx.x]= in[y*width+px];
     }
 
-    if(threadIdx.x>=blockDim.x - half){ // po prawej od środkwoego piksela
+    if(threadIdx.x>=blockDim.x - half){ // on the right from middle pixel
         int px= x+half;
         if(px>=width) px=width-1;
         tile[threadIdx.y*tile_w +threadIdx.x + 2*half] = in[y*width+px];
@@ -79,18 +79,18 @@ __global__ void Vertical(uchar3* in, uchar3* out, float* kernel, int width, int 
     int x= blockIdx.x* blockDim.x+ threadIdx.x;
     int y= blockIdx.y* blockDim.y+ threadIdx.y;
 
-    if (x<width && y<height){ //zabezpieczenie
+    if (x<width && y<height){ //for safety
         tile[idx]= in[y*width+x];}
     else {
         tile[idx] = make_uchar3(0,0,0);}
 
-    if (threadIdx.y<half) {// na górze od środkowego
+    if (threadIdx.y<half) {// higher than middle
         int py= y-half;
         if (py<0) py=0;
         tile[threadIdx.y* blockDim.x+ threadIdx.x]= in[py* width+ x];
     }
 
-    if (threadIdx.y >=blockDim.y -half){ //na dole od środka
+    if (threadIdx.y >=blockDim.y -half){ //lower than middle
         int py= y+half;
         if(py>=height) py=height-1;
         tile[(threadIdx.y + 2*half)*blockDim.x + threadIdx.x]= in[py*width+x];
@@ -123,8 +123,8 @@ torch::Tensor gaussian_blur(torch::Tensor input, int k_width, int k_height, floa
     thrust::device_vector<float> d_kernel_h(k_width);
 
     thrust::counting_iterator<int> count(0);
-    auto gauss_vec_h=thrust::make_transform_iterator(count,Gauss_gen{thrust::make_pair(center_h,sigma)});
-    float sum_h=thrust::reduce(thrust::device,gauss_vec_h,gauss_vec_h+k_width);
+    auto gauss_vec_h=thrust::make_transform_iterator(count,Gauss_gen{thrust::make_pair(center_h,sigma)});//generates vector with gauss values
+    float sum_h=thrust::reduce(thrust::device,gauss_vec_h,gauss_vec_h+k_width);//sum of vector values
 
     thrust::transform(thrust::device,count,count+k_width,d_kernel_h.begin(),Gauss_gen_norm{thrust::make_pair(center_h,sigma),sum_h});
     float* d_kernel_horizontal=thrust::raw_pointer_cast(d_kernel_h.data());
